@@ -34,9 +34,23 @@
 
           craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
+          # Source filter that includes web/dist if present
+          src = pkgs.lib.cleanSourceWith {
+            src = ./.;
+            filter = path: type:
+              let
+                baseName = baseNameOf path;
+                relativePath = pkgs.lib.removePrefix (toString ./. + "/") path;
+              in
+                # Exclude common unwanted directories
+                !(baseName == "node_modules" || baseName == ".git" || baseName == "target")
+                # Include everything else (including web/dist if it exists)
+                && (craneLib.filterCargoSources path type || pkgs.lib.hasPrefix "web/dist" relativePath);
+          };
+
           # Common arguments for crane builds
           commonArgs = {
-            src = craneLib.cleanCargoSource ./.;
+            inherit src;
             strictDeps = true;
 
             # Build inputs needed for native dependencies
